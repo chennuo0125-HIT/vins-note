@@ -2,6 +2,7 @@
 
 GlobalSFM::GlobalSFM(){}
 
+// https://blog.csdn.net/kokerf/article/details/72844455
 void GlobalSFM::triangulatePoint(Eigen::Matrix<double, 3, 4> &Pose0, Eigen::Matrix<double, 3, 4> &Pose1,
 						Vector2d &point0, Vector2d &point1, Vector3d &point_3d)
 {
@@ -18,7 +19,7 @@ void GlobalSFM::triangulatePoint(Eigen::Matrix<double, 3, 4> &Pose0, Eigen::Matr
 	point_3d(2) = triangulated_point(2) / triangulated_point(3);
 }
 
-
+// https://zhuanlan.zhihu.com/p/61742217
 bool GlobalSFM::solveFrameByPnP(Matrix3d &R_initial, Vector3d &P_initial, int i,
 								vector<SFMFeature> &sfm_f)
 {

@@ -55,6 +55,20 @@ int main(int argc, char** argv)
         return 1;
     }
 
+    {
+        // manual by [cn]
+        boardSize = cv::Size(9, 6);
+        squareSize = 70;
+        inputDir = "/home/cn/file/calib_cam_data/qoocam_01/";
+        cameraModel = "kannala-brandt";
+        cameraName = "qoocam";
+        prefix = "u";
+        fileExtension = ".jpg";
+        useOpenCV = true;
+        viewResults = true;
+        verbose = verbose;
+    }
+
     if (!boost::filesystem::exists(inputDir) && !boost::filesystem::is_directory(inputDir))
     {
         std::cerr << "# ERROR: Cannot find input directory " << inputDir << "." << std::endl;

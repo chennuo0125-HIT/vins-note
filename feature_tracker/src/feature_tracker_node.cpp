@@ -141,7 +141,7 @@ void img_callback(const sensor_msgs::ImageConstPtr &img_msg)
                     p.y = un_pts[j].y;
                     p.z = 1;
 
-                    feature_points->points.push_back(p);
+                    feature_points->points.push_back(p);//feature中points保存了去畸变像素点
                     id_of_point.values.push_back(p_id * NUM_OF_CAM + i);
                     u_of_point.values.push_back(cur_pts[j].x);
                     v_of_point.values.push_back(cur_pts[j].y);

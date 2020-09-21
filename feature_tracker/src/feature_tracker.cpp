@@ -84,6 +84,7 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
     TicToc t_r;
     cur_time = _cur_time;
 
+    // 利用CLAHE算法增加图像的对比度，突出纹理
     if (EQUALIZE)
     {
         cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE(3.0, cv::Size(8, 8));
@@ -105,6 +106,7 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
 
     forw_pts.clear();
 
+    // 根据光流法跟踪向前图像的特征点
     if (cur_pts.size() > 0)
     {
         TicToc t_o;
@@ -129,10 +131,10 @@ void FeatureTracker::readImage(const cv::Mat &_img, double _cur_time)
 
     if (PUB_THIS_FRAME)
     {
-        rejectWithF();
+        rejectWithF();//通过计算两帧之间的F矩阵来丢弃误匹配点
         ROS_DEBUG("set mask begins");
         TicToc t_m;
-        setMask();
+        setMask();//根据跟踪上的特征点设置mask,确保产生的新特征点是在这些已有特征点之外
         ROS_DEBUG("set mask costs %fms", t_m.toc());
 
         ROS_DEBUG("detect feature begins");

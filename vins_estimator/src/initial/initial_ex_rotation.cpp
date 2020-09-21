@@ -8,10 +8,18 @@ InitialEXRotation::InitialEXRotation(){
     ric = Matrix3d::Identity();
 }
 
+/*
+理论:
+R_c(k+1)_c(k)*R_b_c = R_b_c*R_b(k+1)_b(k)
+q_c(k+1)_c(k) @ q_b_c = q_b_c @ q_b(k+1)_b(k)
+(R - L)*q_b_c = 0
+再通过svd分解即可求得q_b_c
+左乘右乘矩阵计算方法: <<视觉slam14讲>>中3.4.2节
+*/
 bool InitialEXRotation::CalibrationExRotation(vector<pair<Vector3d, Vector3d>> corres, Quaterniond delta_q_imu, Matrix3d &calib_ric_result)
 {
     frame_count++;
-    Rc.push_back(solveRelativeR(corres));
+    Rc.push_back(solveRelativeR(corres));//通过基础矩阵求解相邻两帧之间的旋转矩阵
     Rimu.push_back(delta_q_imu.toRotationMatrix());
     Rc_g.push_back(ric.inverse() * delta_q_imu * ric);
 
@@ -27,10 +35,12 @@ bool InitialEXRotation::CalibrationExRotation(vector<pair<Vector3d, Vector3d>> c
         ROS_DEBUG(
             "%d %f", i, angular_distance);
 
+        // 计算核系数，降噪声影响
         double huber = angular_distance > 5.0 ? 5.0 / angular_distance : 1.0;
         ++sum_ok;
         Matrix4d L, R;
 
+        // 计算左乘矩阵
         double w = Quaterniond(Rc[i]).w();
         Vector3d q = Quaterniond(Rc[i]).vec();
         L.block<3, 3>(0, 0) = w * Matrix3d::Identity() + Utility::skewSymmetric(q);
@@ -38,6 +48,7 @@ bool InitialEXRotation::CalibrationExRotation(vector<pair<Vector3d, Vector3d>> c
         L.block<1, 3>(3, 0) = -q.transpose();
         L(3, 3) = w;
 
+        // 计算右乘矩阵
         Quaterniond R_ij(Rimu[i]);
         w = R_ij.w();
         q = R_ij.vec();

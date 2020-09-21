@@ -18,11 +18,11 @@ class ImageFrame
         {
             points = _points;
         };
-        map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>> > > points;
+        map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>> > > points;//当前帧的特征点(id号+状态和位置信息)
         double t;
         Matrix3d R;
         Vector3d T;
-        IntegrationBase *pre_integration;
+        IntegrationBase *pre_integration;//上一帧到当前帧时间间隔内的imu信息集合
         bool is_key_frame;
 };
 

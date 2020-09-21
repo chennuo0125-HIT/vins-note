@@ -44,9 +44,9 @@ class FeaturePerFrame
 class FeaturePerId
 {
   public:
-    const int feature_id;
-    int start_frame;
-    vector<FeaturePerFrame> feature_per_frame;
+    const int feature_id;//特征编号
+    int start_frame;//特征第一次出现时的帧号
+    vector<FeaturePerFrame> feature_per_frame;//特征每次出现时的状态
 
     int used_num;
     bool is_outlier;

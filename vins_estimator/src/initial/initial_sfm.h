@@ -15,9 +15,9 @@ using namespace std;
 
 struct SFMFeature
 {
-    bool state;
+    bool state;//指出当前特征点是否已经三角化出位置信息
     int id;
-    vector<pair<int,Vector2d>> observation;
+    vector<pair<int,Vector2d>> observation;//特征出现的帧号及对应的像素位置
     double position[3];
     double depth;
 };

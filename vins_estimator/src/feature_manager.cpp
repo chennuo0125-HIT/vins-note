@@ -71,6 +71,7 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
         }
     }
 
+    //当跟踪特征数少于20个时，即认为有足够视差
     if (frame_count < 2 || last_track_num < 20)
         return true;
 

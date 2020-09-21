@@ -121,6 +121,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
 {
     ROS_DEBUG("new image coming ------------------------------------------");
     ROS_DEBUG("Adding feature points %lu", image.size());
+    // 检查是否有足够视差，决定该帧是否保留
     if (f_manager.addFeatureCheckParallax(frame_count, image, td))
         marginalization_flag = MARGIN_OLD;
     else
@@ -132,6 +133,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
     ROS_DEBUG("number of feature: %d", f_manager.getFeatureCount());
     Headers[frame_count] = header;
 
+    // imageFrame 保存了当前帧的图像信息，以及相邻两帧之间的imu累积信息
     ImageFrame imageframe(image, header.stamp.toSec());
     imageframe.pre_integration = tmp_pre_integration;
     all_image_frame.insert(make_pair(header.stamp.toSec(), imageframe));
@@ -142,6 +144,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
         ROS_INFO("calibrating extrinsic param, rotation movement is needed");
         if (frame_count != 0)
         {
+            // 获得相邻两帧之间的对应特征点
             vector<pair<Vector3d, Vector3d>> corres = f_manager.getCorresponding(frame_count - 1, frame_count);
             Matrix3d calib_ric;
             if (initial_ex_rotation.CalibrationExRotation(corres, pre_integrations[frame_count]->delta_q, calib_ric))
@@ -219,6 +222,7 @@ bool Estimator::initialStructure()
 {
     TicToc t_sfm;
     //check imu observibility
+    // 检测imu是否有足够晃动(通过求这段时间内加速度标准差来判断)
     {
         map<double, ImageFrame>::iterator frame_it;
         Vector3d sum_g;

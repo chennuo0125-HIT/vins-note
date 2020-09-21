@@ -12,6 +12,7 @@
 class Utility
 {
   public:
+    // 推导 dq = (dqx)(dqy)(dqz) 又因为theta很小，所以有sin(theta/2)=theta/2 cos(theta/2)=1
     template <typename Derived>
     static Eigen::Quaternion<typename Derived::Scalar> deltaQ(const Eigen::MatrixBase<Derived> &theta)
     {
