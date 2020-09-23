@@ -154,6 +154,14 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
                 ric[0] = calib_ric;
                 RIC[0] = calib_ric;
                 ESTIMATE_EXTRINSIC = 1;
+
+                //[cn] debug for view extrinsic rotation 
+                Eigen::Quaterniond eq(calib_ric);
+                tf::Quaternion qua(eq.x(), eq.y(), eq.z(), eq.w());
+                tf::Matrix3x3 mat(qua);
+                double roll, pitch, yaw;
+                mat.getRPY(roll, pitch, yaw);
+                ROS_INFO_STREAM("extrinsic rpy -> "<<roll<<" "<<pitch<<" "<<yaw);
             }
         }
     }
@@ -712,6 +720,7 @@ void Estimator::optimization()
                                  last_marginalization_parameter_blocks);
     }
 
+    // 添加imu预积分约束
     for (int i = 0; i < WINDOW_SIZE; i++)
     {
         int j = i + 1;
@@ -720,6 +729,7 @@ void Estimator::optimization()
         IMUFactor* imu_factor = new IMUFactor(pre_integrations[j]);
         problem.AddResidualBlock(imu_factor, NULL, para_Pose[i], para_SpeedBias[i], para_Pose[j], para_SpeedBias[j]);
     }
+    // 添加视觉特征约束
     int f_m_cnt = 0;
     int feature_index = -1;
     for (auto &it_per_id : f_manager.feature)

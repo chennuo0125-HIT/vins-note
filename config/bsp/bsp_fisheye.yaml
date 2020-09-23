@@ -1,27 +1,27 @@
 %YAML:1.0
 
 #common parameters
-imu_topic: "/imu0"
-image_topic: "/cam0/image_raw"
+imu_topic: "/imu"
+image_topic: "//bsp_rgbImg"
 output_path: "/home/tony-ws1/output/"
 
 #camera calibration 
 model_type: KANNALA_BRANDT
 camera_name: camera
-image_width: 512
-image_height: 512
+image_width: 960
+image_height: 960
 projection_parameters:
-   k2: 0.0034823894022493434
-   k3: 0.0007150348452162257
-   k4: -0.0020532361418706202
-   k5: 0.00020293673591811182
-   mu: 190.97847715128717
-   mv: 190.9733070521226
-   u0: 254.93170605935475
-   v0: 256.8974428996504
+   k2: 0.038952
+   k3: -0.0130303
+   k4: 0.00844433
+   k5: -0.00443127
+   mu: 278.312
+   mv: 278.322
+   u0: 469.844
+   v0: 495.677
 
 # Extrinsic parameter between IMU and Camera.
-estimate_extrinsic: 0   # 0  Have an accurate extrinsic parameters. We will trust the following imu^R_cam, imu^T_cam, don't change it.
+estimate_extrinsic: 2   # 0  Have an accurate extrinsic parameters. We will trust the following imu^R_cam, imu^T_cam, don't change it.
                         # 1  Have an initial guess about extrinsic parameters. We will optimize around your initial guess.
                         # 2  Don't know anything about extrinsic parameters. You don't need to give R,T. We will try to calibrate it. Do some rotation movement at beginning.                        
 #If you choose 0 or 1, you should write down the following matrix.
@@ -30,11 +30,9 @@ extrinsicRotation: !!opencv-matrix
    rows: 3
    cols: 3
    dt: d
-   data: [ -9.9951465899298464e-01, 7.5842033363785165e-03,
-       -3.0214670573904204e-02, 2.9940114644659861e-02,
-       -3.4023430206013172e-02, -9.9897246995704592e-01,
-       -8.6044170750674241e-03, -9.9939225835343004e-01,
-       3.3779845322755464e-02 ]
+   data: [ 1.0, 0.0, 0.0,
+           0.0, 1.0, 0.0,
+           0.0, 0.0, 1.0 ]
 extrinsicTranslation: !!opencv-matrix
    rows: 3
    cols: 1
@@ -57,11 +55,11 @@ max_num_iterations: 8   # max solver itrations, to guarantee real time
 keyframe_parallax: 10.0 # keyframe selection threshold (pixel)
 
 #imu parameters       The more accurate parameters you provide, the better performance
-acc_n: 0.04          # accelerometer measurement noise standard deviation. #0.2   0.04
-gyr_n: 0.004         # gyroscope measurement noise standard deviation.     #0.05  0.004
-acc_w: 0.0004         # accelerometer bias random work noise standard deviation.  #0.02
+acc_n: 0.1          # accelerometer measurement noise standard deviation. #0.2
+gyr_n: 0.01         # gyroscope measurement noise standard deviation.     #0.05
+acc_w: 0.0002         # accelerometer bias random work noise standard deviation.  #0.02
 gyr_w: 2.0e-5       # gyroscope bias random work noise standard deviation.     #4.0e-5
-g_norm: 9.80766     # gravity magnitude
+g_norm: 9.805       # gravity magnitude
 
 #loop closure parameters
 loop_closure: 0                    # start loop closure
@@ -70,7 +68,7 @@ fast_relocalization: 0             # useful in real-time and large project
 pose_graph_save_path: "/home/tony-ws1/output/pose_graph/" # save and load path
 
 #unsynchronization parameters
-estimate_td: 0                      # online estimate time offset between camera and imu
+estimate_td: 1                      # online estimate time offset between camera and imu
 td: 0.0                             # initial value of time offset. unit: s. readed image clock + td = real image clock (IMU clock)
 
 #rolling shutter parameters
