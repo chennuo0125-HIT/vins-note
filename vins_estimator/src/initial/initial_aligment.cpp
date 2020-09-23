@@ -125,7 +125,7 @@ void RefineGravity(map<double, ImageFrame> &all_image_frame, Vector3d &g, Vector
 bool LinearAlignment(map<double, ImageFrame> &all_image_frame, Vector3d &g, VectorXd &x)
 {
     int all_frame_count = all_image_frame.size();
-    int n_state = all_frame_count * 3 + 3 + 1;
+    int n_state = all_frame_count * 3 + 3 + 1;//{v_b0_b0, v_b1_b1...v_bn_bn, s, g_c0}
 
     MatrixXd A{n_state, n_state};
     A.setZero();
