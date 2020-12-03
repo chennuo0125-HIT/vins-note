@@ -4,8 +4,8 @@ std::string IMAGE_TOPIC;
 std::string IMU_TOPIC;
 std::vector<std::string> CAM_NAMES;
 std::string FISHEYE_MASK;
-int MAX_CNT;
-int MIN_DIST;
+int MAX_CNT;  // 最大特征点数
+int MIN_DIST; // 两个特征之间的最小距离
 int WINDOW_SIZE;
 int FREQ;
 double F_THRESHOLD;
@@ -39,7 +39,7 @@ void readParameters(ros::NodeHandle &n)
     std::string config_file;
     config_file = readParam<std::string>(n, "config_file");
     cv::FileStorage fsSettings(config_file, cv::FileStorage::READ);
-    if(!fsSettings.isOpened())
+    if (!fsSettings.isOpened())
     {
         std::cerr << "ERROR: Wrong path to settings" << std::endl;
     }
@@ -69,6 +69,4 @@ void readParameters(ros::NodeHandle &n)
         FREQ = 100;
 
     fsSettings.release();
-
-
 }

@@ -15,7 +15,7 @@ vector<uchar> r_status;
 vector<float> r_err;
 queue<sensor_msgs::ImageConstPtr> img_buf;
 
-ros::Publisher pub_img,pub_match;
+ros::Publisher pub_img, pub_match;
 ros::Publisher pub_restart;
 
 FeatureTracker trackerData[NUM_OF_CAM];
@@ -27,18 +27,20 @@ bool init_pub = 0;
 
 void img_callback(const sensor_msgs::ImageConstPtr &img_msg)
 {
-    if(first_image_flag)
+    // 初始化上一张图像时间戳
+    if (first_image_flag)
     {
         first_image_flag = false;
         first_image_time = img_msg->header.stamp.toSec();
         last_image_time = img_msg->header.stamp.toSec();
         return;
     }
+    // 检测数据流是否稳定，并做出警告
     // detect unstable camera stream
     if (img_msg->header.stamp.toSec() - last_image_time > 1.0 || img_msg->header.stamp.toSec() < last_image_time)
     {
         ROS_WARN("image discontinue! reset the feature tracker!");
-        first_image_flag = true; 
+        first_image_flag = true;
         last_image_time = 0;
         pub_count = 1;
         std_msgs::Bool restart_flag;
@@ -47,6 +49,7 @@ void img_callback(const sensor_msgs::ImageConstPtr &img_msg)
         return;
     }
     last_image_time = img_msg->header.stamp.toSec();
+    // 控制跟踪结果发布频率
     // frequency control
     if (round(1.0 * pub_count / (img_msg->header.stamp.toSec() - first_image_time)) <= FREQ)
     {
@@ -61,6 +64,7 @@ void img_callback(const sensor_msgs::ImageConstPtr &img_msg)
     else
         PUB_THIS_FRAME = false;
 
+    // 解析图像消息数据为cv::Mat 数据
     cv_bridge::CvImageConstPtr ptr;
     if (img_msg->encoding == "8UC1")
     {
@@ -82,6 +86,7 @@ void img_callback(const sensor_msgs::ImageConstPtr &img_msg)
     for (int i = 0; i < NUM_OF_CAM; i++)
     {
         ROS_DEBUG("processing camera %d", i);
+        // 核心部分
         if (i != 1 || !STEREO_TRACK)
             trackerData[i].readImage(ptr->image.rowRange(ROW * i, ROW * (i + 1)), img_msg->header.stamp.toSec());
         else
@@ -110,8 +115,8 @@ void img_callback(const sensor_msgs::ImageConstPtr &img_msg)
             break;
     }
 
-   if (PUB_THIS_FRAME)
-   {
+    if (PUB_THIS_FRAME)
+    {
         pub_count++;
         sensor_msgs::PointCloudPtr feature_points(new sensor_msgs::PointCloud);
         sensor_msgs::ChannelFloat32 id_of_point;
@@ -141,15 +146,16 @@ void img_callback(const sensor_msgs::ImageConstPtr &img_msg)
                     p.y = un_pts[j].y;
                     p.z = 1;
 
-                    feature_points->points.push_back(p);//feature中points保存了去畸变像素点
-                    id_of_point.values.push_back(p_id * NUM_OF_CAM + i);
-                    u_of_point.values.push_back(cur_pts[j].x);
-                    v_of_point.values.push_back(cur_pts[j].y);
-                    velocity_x_of_point.values.push_back(pts_velocity[j].x);
-                    velocity_y_of_point.values.push_back(pts_velocity[j].y);
+                    feature_points->points.push_back(p);                     // 去畸变特征点
+                    id_of_point.values.push_back(p_id * NUM_OF_CAM + i);     // 特征点id
+                    u_of_point.values.push_back(cur_pts[j].x);               // 未去畸变时特征点像素u
+                    v_of_point.values.push_back(cur_pts[j].y);               // 未去畸变时特征点像素v
+                    velocity_x_of_point.values.push_back(pts_velocity[j].x); // 去畸变特征点速度x
+                    velocity_y_of_point.values.push_back(pts_velocity[j].y); // 去畸变特征点速度y
                 }
             }
         }
+        // 发布特征跟踪结果: 当前去畸变特征点、特征id、未去畸变时特征像素值、去畸变后特征点的速度
         feature_points->channels.push_back(id_of_point);
         feature_points->channels.push_back(u_of_point);
         feature_points->channels.push_back(v_of_point);
@@ -210,15 +216,17 @@ int main(int argc, char **argv)
     ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Info);
     readParameters(n);
 
+    // 读取内参
     for (int i = 0; i < NUM_OF_CAM; i++)
         trackerData[i].readIntrinsicParameter(CAM_NAMES[i]);
 
-    if(FISHEYE)
+    // 如果是鱼眼相机，需要读取本地的mask以滤除掉无效像素点
+    if (FISHEYE)
     {
         for (int i = 0; i < NUM_OF_CAM; i++)
         {
             trackerData[i].fisheye_mask = cv::imread(FISHEYE_MASK, 0);
-            if(!trackerData[i].fisheye_mask.data)
+            if (!trackerData[i].fisheye_mask.data)
             {
                 ROS_INFO("load mask fail");
                 ROS_BREAK();
@@ -228,11 +236,12 @@ int main(int argc, char **argv)
         }
     }
 
+    // 图像数据回调
     ros::Subscriber sub_img = n.subscribe(IMAGE_TOPIC, 100, img_callback);
 
     pub_img = n.advertise<sensor_msgs::PointCloud>("feature", 1000);
-    pub_match = n.advertise<sensor_msgs::Image>("feature_img",1000);
-    pub_restart = n.advertise<std_msgs::Bool>("restart",1000);
+    pub_match = n.advertise<sensor_msgs::Image>("feature_img", 1000);
+    pub_restart = n.advertise<std_msgs::Bool>("restart", 1000);
     /*
     if (SHOW_TRACK)
         cv::namedWindow("vis", cv::WINDOW_NORMAL);
@@ -240,7 +249,6 @@ int main(int argc, char **argv)
     ros::spin();
     return 0;
 }
-
 
 // new points velocity is 0, pub or not?
 // track cnt > 1 pub?
