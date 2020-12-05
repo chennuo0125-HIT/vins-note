@@ -206,23 +206,26 @@ VectorXd FeatureManager::getDepthVector()
 
 void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d ric[])
 {
+    // 遍历所有特征点
     for (auto &it_per_id : feature)
     {
+        // 如果特征点被观察到的次数少于3次，则无法进行三角化，直接跳过
         it_per_id.used_num = it_per_id.feature_per_frame.size();
         if (!(it_per_id.used_num >= 2 && it_per_id.start_frame < WINDOW_SIZE - 2))
             continue;
 
+        // 如果特征点深度大于0，意味着该特征点已经三角化过，直接跳过
         if (it_per_id.estimated_depth > 0)
             continue;
-        int imu_i = it_per_id.start_frame, imu_j = imu_i - 1;
+        int imu_i = it_per_id.start_frame, imu_j = imu_i - 1; // imu_i指代特征被一次观察到的关键帧索引
 
         ROS_ASSERT(NUM_OF_CAM == 1);
         Eigen::MatrixXd svd_A(2 * it_per_id.feature_per_frame.size(), 4);
         int svd_idx = 0;
 
         Eigen::Matrix<double, 3, 4> P0;
-        Eigen::Vector3d t0 = Ps[imu_i] + Rs[imu_i] * tic[0];
-        Eigen::Matrix3d R0 = Rs[imu_i] * ric[0];
+        Eigen::Vector3d t0 = Ps[imu_i] + Rs[imu_i] * tic[0]; // 获得P_ck_c0
+        Eigen::Matrix3d R0 = Rs[imu_i] * ric[0];             // 获得R_ck_c0
         P0.leftCols<3>() = Eigen::Matrix3d::Identity();
         P0.rightCols<1>() = Eigen::Vector3d::Zero();
 
@@ -230,8 +233,9 @@ void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d ric[])
         {
             imu_j++;
 
-            Eigen::Vector3d t1 = Ps[imu_j] + Rs[imu_j] * tic[0];
-            Eigen::Matrix3d R1 = Rs[imu_j] * ric[0];
+            Eigen::Vector3d t1 = Ps[imu_j] + Rs[imu_j] * tic[0]; // 获得P_c(k+1)_c0
+            Eigen::Matrix3d R1 = Rs[imu_j] * ric[0];             // 获得R_c(k+1)_c0
+            // 下面是已知两相机位姿，并知道特征点在这两个相机中的像素值，恢复特征点的常见求解方法，与ORB slam一致．
             Eigen::Vector3d t = R0.transpose() * (t1 - t0);
             Eigen::Matrix3d R = R0.transpose() * R1;
             Eigen::Matrix<double, 3, 4> P;
@@ -246,13 +250,14 @@ void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d ric[])
         }
         ROS_ASSERT(svd_idx == svd_A.rows());
         Eigen::Vector4d svd_V = Eigen::JacobiSVD<Eigen::MatrixXd>(svd_A, Eigen::ComputeThinV).matrixV().rightCols<1>();
-        double svd_method = svd_V[2] / svd_V[3];
+        double svd_method = svd_V[2] / svd_V[3]; // 获取特征点深度，即z值
         //it_per_id->estimated_depth = -b / A;
         //it_per_id->estimated_depth = svd_V[2] / svd_V[3];
 
         it_per_id.estimated_depth = svd_method;
         //it_per_id->estimated_depth = INIT_DEPTH;
 
+        // 如果计算得出的特征点深度小于0.1，则直接设为给定的初始值5.0
         if (it_per_id.estimated_depth < 0.1)
         {
             it_per_id.estimated_depth = INIT_DEPTH;
@@ -283,12 +288,15 @@ void FeatureManager::removeBackShiftDepth(Eigen::Matrix3d marg_R, Eigen::Vector3
     {
         it_next++;
 
+        // 如果当前查询特征不属于边缘化掉的帧，则直接跳过
         if (it->start_frame != 0)
             it->start_frame--;
         else
         {
-            Eigen::Vector3d uv_i = it->feature_per_frame[0].point;
-            it->feature_per_frame.erase(it->feature_per_frame.begin());
+            // 如果当前查询特征属于边缘化掉的帧时
+            Eigen::Vector3d uv_i = it->feature_per_frame[0].point;      // 获得特征去畸变后投影到单位球面上的坐标
+            it->feature_per_frame.erase(it->feature_per_frame.begin()); // 将特征被观察到的关键帧容器中的边缘化掉的关键帧移除
+            // 将特征点中被边缘化的关键帧移除后，若被观察到的关键帧数量小于2，则直接丢弃当前特征点
             if (it->feature_per_frame.size() < 2)
             {
                 feature.erase(it);
@@ -296,10 +304,11 @@ void FeatureManager::removeBackShiftDepth(Eigen::Matrix3d marg_R, Eigen::Vector3
             }
             else
             {
-                Eigen::Vector3d pts_i = uv_i * it->estimated_depth;
-                Eigen::Vector3d w_pts_i = marg_R * pts_i + marg_P;
-                Eigen::Vector3d pts_j = new_R.transpose() * (w_pts_i - new_P);
-                double dep_j = pts_j(2);
+                // 由于特征被观察到的第一帧(边缘化掉的帧)已经移除了，需要重新计算在新的第一帧中的特征深度
+                Eigen::Vector3d pts_i = uv_i * it->estimated_depth;            // 在边缘化掉的帧中的坐标
+                Eigen::Vector3d w_pts_i = marg_R * pts_i + marg_P;             // 通过坐标变化转到世界坐标系
+                Eigen::Vector3d pts_j = new_R.transpose() * (w_pts_i - new_P); // 将世界坐标系的特征点坐标变换到新的第一帧中
+                double dep_j = pts_j(2);                                       // 在新的第一帧中的坐标的z值即为特征点深度
                 if (dep_j > 0)
                     it->estimated_depth = dep_j;
                 else
@@ -346,6 +355,7 @@ void FeatureManager::removeFront(int frame_count)
         }
         else
         {
+            // 如果特征点中的关键帧信息包含边缘化掉的最新帧，则将其移除掉
             int j = WINDOW_SIZE - 1 - it->start_frame;
             if (it->endFrame() < frame_count - 1)
                 continue;

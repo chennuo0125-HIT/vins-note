@@ -178,6 +178,7 @@ void Estimator::processImage(const map<int, vector<pair<int, Eigen::Matrix<doubl
             bool result = false;
             if (ESTIMATE_EXTRINSIC != 2 && (header.stamp.toSec() - initial_timestamp) > 0.1)
             {
+                // 视觉惯性初始化
                 result = initialStructure();
                 initial_timestamp = header.stamp.toSec();
             }
@@ -1047,6 +1048,7 @@ void Estimator::optimization()
 void Estimator::slideWindow()
 {
     TicToc t_margin;
+    // 边缘化老帧
     if (marginalization_flag == MARGIN_OLD)
     {
         double t_0 = Headers[0].stamp.toSec();
@@ -1056,20 +1058,21 @@ void Estimator::slideWindow()
         {
             for (int i = 0; i < WINDOW_SIZE; i++)
             {
-                Rs[i].swap(Rs[i + 1]);
+                Rs[i].swap(Rs[i + 1]); // 将关键帧姿态信息整体左移
 
-                std::swap(pre_integrations[i], pre_integrations[i + 1]);
+                std::swap(pre_integrations[i], pre_integrations[i + 1]); // 将imu预积分结果整体左移
 
-                dt_buf[i].swap(dt_buf[i + 1]);
-                linear_acceleration_buf[i].swap(linear_acceleration_buf[i + 1]);
-                angular_velocity_buf[i].swap(angular_velocity_buf[i + 1]);
+                dt_buf[i].swap(dt_buf[i + 1]);                                   // 将关键帧之间的时间差记录容器整体左移
+                linear_acceleration_buf[i].swap(linear_acceleration_buf[i + 1]); // 将imu的加速度信息存储容器整体左移
+                angular_velocity_buf[i].swap(angular_velocity_buf[i + 1]);       // 将imu的角速度信息存储容器整体左移
 
-                Headers[i] = Headers[i + 1];
-                Ps[i].swap(Ps[i + 1]);
-                Vs[i].swap(Vs[i + 1]);
-                Bas[i].swap(Bas[i + 1]);
-                Bgs[i].swap(Bgs[i + 1]);
+                Headers[i] = Headers[i + 1]; // 关键帧头文件整体左移
+                Ps[i].swap(Ps[i + 1]);       // 将关键帧位置信息整体左移
+                Vs[i].swap(Vs[i + 1]);       // 将关键帧速度信息整体左移
+                Bas[i].swap(Bas[i + 1]);     // 将imu加速度计偏置信息整体左移
+                Bgs[i].swap(Bgs[i + 1]);     // 将imu陀螺仪偏置信息整体左移
             }
+            // 将最后一帧信息置为与其前一帧相同
             Headers[WINDOW_SIZE] = Headers[WINDOW_SIZE - 1];
             Ps[WINDOW_SIZE] = Ps[WINDOW_SIZE - 1];
             Vs[WINDOW_SIZE] = Vs[WINDOW_SIZE - 1];
@@ -1077,20 +1080,24 @@ void Estimator::slideWindow()
             Bas[WINDOW_SIZE] = Bas[WINDOW_SIZE - 1];
             Bgs[WINDOW_SIZE] = Bgs[WINDOW_SIZE - 1];
 
+            // 重新初始化滑窗内最后一帧的imu预积分信息
             delete pre_integrations[WINDOW_SIZE];
             pre_integrations[WINDOW_SIZE] = new IntegrationBase{acc_0, gyr_0, Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE]};
 
+            // 清除滑窗内最后一帧的时间差、线性加速度、角速度
             dt_buf[WINDOW_SIZE].clear();
             linear_acceleration_buf[WINDOW_SIZE].clear();
             angular_velocity_buf[WINDOW_SIZE].clear();
 
             if (true || solver_flag == INITIAL)
             {
+                // 删除滑窗内第一帧的imu预积分信息，释放资源
                 map<double, ImageFrame>::iterator it_0;
                 it_0 = all_image_frame.find(t_0);
                 delete it_0->second.pre_integration;
                 it_0->second.pre_integration = nullptr;
 
+                // 删除所有图像帧容器内在滑窗内第一帧之前的帧内的imu预积分信息，释放资源
                 for (map<double, ImageFrame>::iterator it = all_image_frame.begin(); it != it_0; ++it)
                 {
                     if (it->second.pre_integration)
@@ -1098,16 +1105,19 @@ void Estimator::slideWindow()
                     it->second.pre_integration = NULL;
                 }
 
+                // 删除所有图像帧容器中在滑窗内第一帧之前的帧
                 all_image_frame.erase(all_image_frame.begin(), it_0);
                 all_image_frame.erase(t_0);
             }
-            slideWindowOld();
+            slideWindowOld(); // 由于部分特征点的第一次被观察帧发生改变，因此需要重新计算特征点深度
         }
     }
     else
     {
+        // 边缘化新帧
         if (frame_count == WINDOW_SIZE)
         {
+            // 将要边缘化掉的最新帧中的imu信息保存到上一帧中
             for (unsigned int i = 0; i < dt_buf[frame_count].size(); i++)
             {
                 double tmp_dt = dt_buf[frame_count][i];
@@ -1121,6 +1131,7 @@ void Estimator::slideWindow()
                 angular_velocity_buf[frame_count - 1].push_back(tmp_angular_velocity);
             }
 
+            // 将要边缘化掉的最新帧更新到上一帧中
             Headers[frame_count - 1] = Headers[frame_count];
             Ps[frame_count - 1] = Ps[frame_count];
             Vs[frame_count - 1] = Vs[frame_count];
@@ -1128,6 +1139,7 @@ void Estimator::slideWindow()
             Bas[frame_count - 1] = Bas[frame_count];
             Bgs[frame_count - 1] = Bgs[frame_count];
 
+            // 由于最新一帧已经边缘化掉，因此对该帧进行初始化，等待新的数据填充
             delete pre_integrations[WINDOW_SIZE];
             pre_integrations[WINDOW_SIZE] = new IntegrationBase{acc_0, gyr_0, Bas[WINDOW_SIZE], Bgs[WINDOW_SIZE]};
 
@@ -1135,7 +1147,7 @@ void Estimator::slideWindow()
             linear_acceleration_buf[WINDOW_SIZE].clear();
             angular_velocity_buf[WINDOW_SIZE].clear();
 
-            slideWindowNew();
+            slideWindowNew(); // 如果特征点中的关键帧信息包含边缘化掉的最新帧，则将其移除掉
         }
     }
 }
@@ -1154,13 +1166,14 @@ void Estimator::slideWindowOld()
     bool shift_depth = solver_flag == NON_LINEAR ? true : false;
     if (shift_depth)
     {
+        // (R0,P0)是边缘化掉的关键帧位姿，(R1,P1)是滑窗内移除边缘化帧之后的最老帧
         Matrix3d R0, R1;
         Vector3d P0, P1;
         R0 = back_R0 * ric[0];
         R1 = Rs[0] * ric[0];
         P0 = back_P0 + back_R0 * tic[0];
         P1 = Ps[0] + Rs[0] * tic[0];
-        f_manager.removeBackShiftDepth(R0, P0, R1, P1);
+        f_manager.removeBackShiftDepth(R0, P0, R1, P1); // 由于部分特征点的第一次被观察帧发生改变，因此需要重新计算特征点深度
     }
     else
         f_manager.removeBack();
