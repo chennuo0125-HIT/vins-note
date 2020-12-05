@@ -22,15 +22,15 @@
 #include <queue>
 #include <opencv2/core/eigen.hpp>
 
-
 class Estimator
 {
-  public:
+public:
     Estimator();
 
     void setParameter();
 
     // interface
+    // imu 预积分
     void processIMU(double t, const Vector3d &linear_acceleration, const Vector3d &angular_velocity);
     void processImage(const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, const std_msgs::Header &header);
     void setReloFrame(double _frame_stamp, int _frame_index, vector<Vector3d> &_match_points, Vector3d _relo_t, Matrix3d _relo_r);
@@ -49,7 +49,6 @@ class Estimator
     void double2vector();
     bool failureDetection();
 
-
     enum SolverFlag
     {
         INITIAL,
@@ -63,14 +62,16 @@ class Estimator
     };
 
     SolverFlag solver_flag;
-    MarginalizationFlag  marginalization_flag;
+    MarginalizationFlag marginalization_flag;
     Vector3d g;
     MatrixXd Ap[2], backup_A;
     VectorXd bp[2], backup_b;
 
+    // 外参 T_c_b
     Matrix3d ric[NUM_OF_CAM];
     Vector3d tic[NUM_OF_CAM];
 
+    // IMU状态量
     Vector3d Ps[(WINDOW_SIZE + 1)];
     Vector3d Vs[(WINDOW_SIZE + 1)];
     Matrix3d Rs[(WINDOW_SIZE + 1)];
@@ -104,7 +105,6 @@ class Estimator
     vector<Vector3d> margin_cloud;
     vector<Vector3d> key_poses;
     double initial_timestamp;
-
 
     double para_Pose[WINDOW_SIZE + 1][SIZE_POSE];
     double para_SpeedBias[WINDOW_SIZE + 1][SIZE_SPEEDBIAS];

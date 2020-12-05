@@ -41,24 +41,24 @@ int FeatureManager::getFeatureCount()
     return cnt;
 }
 
-
 bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vector<pair<int, Eigen::Matrix<double, 7, 1>>>> &image, double td)
 {
     ROS_DEBUG("input feature: %d", (int)image.size());
     ROS_DEBUG("num of feature: %d", getFeatureCount());
     double parallax_sum = 0;
     int parallax_num = 0;
-    last_track_num = 0;
+    last_track_num = 0; //当前图像帧中的特征点跟踪上已有特征点的数量
     for (auto &id_pts : image)
     {
         FeaturePerFrame f_per_fra(id_pts.second[0].second, td);
 
+        // 查找新图像特征点是否在已有特征点集合中存在
         int feature_id = id_pts.first;
-        auto it = find_if(feature.begin(), feature.end(), [feature_id](const FeaturePerId &it)
-                          {
+        auto it = find_if(feature.begin(), feature.end(), [feature_id](const FeaturePerId &it) {
             return it.feature_id == feature_id;
-                          });
+        });
 
+        // 如果不存在，则将新的特征点添加到已有特征点集合中
         if (it == feature.end())
         {
             feature.push_back(FeaturePerId(feature_id, frame_count));
@@ -66,15 +66,17 @@ bool FeatureManager::addFeatureCheckParallax(int frame_count, const map<int, vec
         }
         else if (it->feature_id == feature_id)
         {
+            // 如果存在，则将该特征在新图像中的信息保存起来
             it->feature_per_frame.push_back(f_per_fra);
-            last_track_num++;
+            last_track_num++; // 跟踪已有特征点次数加1
         }
     }
 
-    //当跟踪特征数少于20个时，即认为有足够视差
+    //当滑窗内帧数太少或者当跟踪特征数少于20个时，即认为有足够视差
     if (frame_count < 2 || last_track_num < 20)
         return true;
 
+    // 计算所有特征点的平均视差，并判断是否超过给定值
     for (auto &it_per_id : feature)
     {
         if (it_per_id.start_frame <= frame_count - 2 &&
@@ -112,7 +114,7 @@ void FeatureManager::debugShow()
         {
             ROS_DEBUG("%d,", int(j.is_used));
             sum += j.is_used;
-            printf("(%lf,%lf) ",j.point(0), j.point(1));
+            printf("(%lf,%lf) ", j.point(0), j.point(1));
         }
         ROS_ASSERT(it.used_num == sum);
     }
@@ -121,19 +123,21 @@ void FeatureManager::debugShow()
 vector<pair<Vector3d, Vector3d>> FeatureManager::getCorresponding(int frame_count_l, int frame_count_r)
 {
     vector<pair<Vector3d, Vector3d>> corres;
+    // 遍历所有特征点
     for (auto &it : feature)
     {
+        // 如果当前特征点在相邻两帧中都出现了，则记录该对相关点
         if (it.start_frame <= frame_count_l && it.endFrame() >= frame_count_r)
         {
             Vector3d a = Vector3d::Zero(), b = Vector3d::Zero();
             int idx_l = frame_count_l - it.start_frame;
             int idx_r = frame_count_r - it.start_frame;
 
-            a = it.feature_per_frame[idx_l].point;
+            a = it.feature_per_frame[idx_l].point; // 在左帧中的去畸变特征点坐标
 
-            b = it.feature_per_frame[idx_r].point;
-            
-            corres.push_back(make_pair(a, b));
+            b = it.feature_per_frame[idx_r].point; // 在右帧中的去畸变特征点坐标
+
+            corres.push_back(make_pair(a, b)); // 保存这样匹配相关点坐标信息
         }
     }
     return corres;
@@ -253,7 +257,6 @@ void FeatureManager::triangulate(Vector3d Ps[], Vector3d tic[], Matrix3d ric[])
         {
             it_per_id.estimated_depth = INIT_DEPTH;
         }
-
     }
 }
 
@@ -284,7 +287,7 @@ void FeatureManager::removeBackShiftDepth(Eigen::Matrix3d marg_R, Eigen::Vector3
             it->start_frame--;
         else
         {
-            Eigen::Vector3d uv_i = it->feature_per_frame[0].point;  
+            Eigen::Vector3d uv_i = it->feature_per_frame[0].point;
             it->feature_per_frame.erase(it->feature_per_frame.begin());
             if (it->feature_per_frame.size() < 2)
             {

@@ -11,8 +11,8 @@
 
 class Utility
 {
-  public:
-    // 推导 dq = (dqx)(dqy)(dqz) 又因为theta很小，所以有sin(theta/2)=theta/2 cos(theta/2)=1
+public:
+    // 扰动近似
     template <typename Derived>
     static Eigen::Quaternion<typename Derived::Scalar> deltaQ(const Eigen::MatrixBase<Derived> &theta)
     {
@@ -133,21 +133,21 @@ class Utility
     }
 
     template <typename T>
-    static T normalizeAngle(const T& angle_degrees) {
-      T two_pi(2.0 * 180);
-      if (angle_degrees > 0)
-      return angle_degrees -
-          two_pi * std::floor((angle_degrees + T(180)) / two_pi);
-      else
-        return angle_degrees +
-            two_pi * std::floor((-angle_degrees + T(180)) / two_pi);
+    static T normalizeAngle(const T &angle_degrees)
+    {
+        T two_pi(2.0 * 180);
+        if (angle_degrees > 0)
+            return angle_degrees -
+                   two_pi * std::floor((angle_degrees + T(180)) / two_pi);
+        else
+            return angle_degrees +
+                   two_pi * std::floor((-angle_degrees + T(180)) / two_pi);
     };
 };
 
 class FileSystemHelper
 {
-  public:
-
+public:
     /******************************************************************************
      * Recursively create directory if `path` not exists.
      * Return 0 if success.
@@ -156,12 +156,12 @@ class FileSystemHelper
     {
         struct stat info;
         int statRC = stat(path, &info);
-        if( statRC != 0 )
+        if (statRC != 0)
         {
-            if (errno == ENOENT)  
+            if (errno == ENOENT)
             {
                 printf("%s not exists, trying to create it \n", path);
-                if (! createDirectoryIfNotExists(dirname(strdupa(path))))
+                if (!createDirectoryIfNotExists(dirname(strdupa(path))))
                 {
                     if (mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) != 0)
                     {
@@ -171,16 +171,16 @@ class FileSystemHelper
                     else
                         return 0;
                 }
-                else 
+                else
                     return 1;
             } // directory not exists
-            if (errno == ENOTDIR) 
-            { 
+            if (errno == ENOTDIR)
+            {
                 fprintf(stderr, "%s is not a directory path \n", path);
-                return 1; 
+                return 1;
             } // something in path prefix is not a dir
             return 1;
         }
-        return ( info.st_mode & S_IFDIR ) ? 0 : 1;
+        return (info.st_mode & S_IFDIR) ? 0 : 1;
     }
 };
