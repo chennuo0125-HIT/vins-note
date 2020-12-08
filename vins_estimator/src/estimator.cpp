@@ -523,6 +523,7 @@ void Estimator::solveOdometry()
     }
 }
 
+// 将vio状态量转换成ceres可用的形式
 void Estimator::vector2double()
 {
     for (int i = 0; i <= WINDOW_SIZE; i++)
@@ -894,6 +895,7 @@ void Estimator::optimization()
         {
             if (pre_integrations[1]->sum_dt < 10.0)
             {
+                // 获取次老帧imu约束
                 IMUFactor *imu_factor = new IMUFactor(pre_integrations[1]);
                 ResidualBlockInfo *residual_block_info = new ResidualBlockInfo(imu_factor, NULL,
                                                                                vector<double *>{para_Pose[0], para_SpeedBias[0], para_Pose[1], para_SpeedBias[1]},
@@ -903,6 +905,7 @@ void Estimator::optimization()
         }
 
         {
+            // 获得所有视觉残差约束
             int feature_index = -1;
             for (auto &it_per_id : f_manager.feature)
             {
