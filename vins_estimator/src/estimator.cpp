@@ -384,6 +384,7 @@ bool Estimator::initialStructure()
         frame_it->second.R = R_pnp * RIC[0].transpose(); // 每个图像帧内保存的姿态信息为R_bk_c0
         frame_it->second.T = T_pnp;                      // 每个图像帧中保存的位置信息为T_ck_c0(假设 TIC = 0)?
     }
+    // 参考博客: https://blog.csdn.net/weixin_37835423/article/details/110679534
     if (visualInitialAlign())
         return true;
     else

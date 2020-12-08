@@ -51,6 +51,7 @@ public:
             propagate(dt_buf[i], acc_buf[i], gyr_buf[i]);
     }
 
+    // 参考博客: https://blog.csdn.net/weixin_37835423/article/details/110843808
     void midPointIntegration(double _dt,
                              const Eigen::Vector3d &_acc_0, const Eigen::Vector3d &_gyr_0,
                              const Eigen::Vector3d &_acc_1, const Eigen::Vector3d &_gyr_1,
