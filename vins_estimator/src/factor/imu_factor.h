@@ -16,6 +16,8 @@ public:
     IMUFactor(IntegrationBase *_pre_integration) : pre_integration(_pre_integration)
     {
     }
+
+    // 参考博客: https://blog.csdn.net/weixin_37835423/article/details/110839609
     virtual bool Evaluate(double const *const *parameters, double *residuals, double **jacobians) const
     {
 
